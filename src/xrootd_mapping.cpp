@@ -61,7 +61,6 @@ static ClassAdFunctionMapping functions[] =
  ***************************************************************************/
 extern "C" 
 {
-
 	ClassAdFunctionMapping *Init(void)
 	{
 		return functions;
@@ -131,36 +130,56 @@ static bool files_to_sites(
 	// then we have to evaluate that argument.
 	if (arguments.size() != 2) {
 		result.SetErrorValue();
+		CondorErrMsg = "Invalid number of arguments passed to files_to_sites; 2 required.";
 		return false;
 	}
 
 	std::string xrootd_host;
 	if (!arguments[0]->Evaluate(state, xrootd_host_arg) || (!xrootd_host_arg.IsStringValue(xrootd_host))) {
 		result.SetErrorValue();
+		CondorErrMsg = "Could not evaluate the first argument (Xrootd hostname) of files_to_sites to a string.";
 		return false;
 	}
 
 	if (!arguments[1]->Evaluate(state, filenames_arg)) {
 		result.SetErrorValue();
+		CondorErrMsg = "Could not evaluate the second argument (list of filenames) of files_to_sites.";
 		return false;
 	}
 	std::vector<std::string> filenames;
-	if (!convert_to_vector_string(state, filenames_arg, filenames)) {
+	std::string single_filename;
+	if (filenames_arg.IsStringValue(single_filename))
+	{
+		filenames.push_back(single_filename);
+	}
+	else if (!convert_to_vector_string(state, filenames_arg, filenames))
+	{
 		result.SetErrorValue();
+		CondorErrMsg = "Could not evaluate the second argument (list of filenames) of files_to_sites to a list of strings.";
 		return false;
 	}
 
 	FileMappingClient &client = FileMappingClient::getClient(xrootd_host);
-	if (!client.is_connect()) {
+	if (!client.is_connected()) {
 		result.SetErrorValue();
+		CondorErrMsg = "Could not connect to specified xrootd host: " + xrootd_host;
 		return false;
 	}
 
 	std::vector<std::string> hosts;
 	if (!client.map(filenames, hosts)) {
 		result.SetErrorValue();
+		CondorErrMsg = "Error while mapping the files to hosts.";
 		return false;
 	}
+
+	ExprList * result_list = new ExprList();
+	for (std::vector<std::string>::const_iterator it=hosts.begin(); it!=hosts.end(); ++it) {
+		Value v;
+		v.SetStringValue(*it);
+		result_list->push_back(Literal::MakeLiteral(v));
+	}
+	result.SetListValue(result_list);
 
 	return true;
 }

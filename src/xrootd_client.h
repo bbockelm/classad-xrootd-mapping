@@ -22,7 +22,7 @@ public:
 
 	bool map(const std::vector<std::string> &, std::vector<std::string> &);
 
-	bool is_connect() {return m_connection.IsConnected();}
+	bool is_connected() {return m_connection.IsConnected();}
 
 	UnsolRespProcResult ProcessUnsolicitedMsg(XrdClientUnsolMsgSender * /*sender*/, XrdClientMessage * /*unsolmsg*/) {return kUNSOL_CONTINUE;};
 
@@ -33,7 +33,7 @@ private:
 	bool locate(const std::string &, std::set<std::string> &);
 
 	XrdClientConn m_connection;
-	std::string m_url;
+	XrdClientUrlInfo m_url;
 	std::string m_host;
 
 	static InstanceTable m_instance_table;

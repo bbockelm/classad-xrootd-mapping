@@ -5,6 +5,7 @@
 
 #include "XrdClient/XrdClientEnv.hh"
 #include "XrdClient/XrdClientDebug.hh"
+#include "XrdSys/XrdSysDNS.hh"
 
 using namespace classad;
 
@@ -71,9 +72,10 @@ bool FileMappingClient::map(const std::vector<std::string> &filenames, std::vect
 }
 
 FileMappingClient::FileMappingClient(const std::string &hostname)
-	: m_url("root://" + hostname),
+	: m_url(("root://" + hostname).c_str()),
 	m_host(hostname)
 {
+	m_url.SetAddrFromHost(); // No clue why the URL's constructor doesn't do this; useless without it.
 	connect();
 }
 
@@ -108,9 +110,9 @@ bool FileMappingClient::connect()
 		}     
 
 		if (m_connection.CheckHostDomain(m_host.c_str())) {
-			Info(XrdClientDebug::kHIDEBUG, "Connect", "Trying to connect to " << m_host 
+			Info(XrdClientDebug::kHIDEBUG, "Connect", "Trying to connect to " << m_host
 				<< ". Connect try " << connectTry+1);
-			locallogid = m_connection.Connect(m_url.c_str(), this);
+			locallogid = m_connection.Connect(m_url, this);
 			// To find out if we have tried the whole URLs set
 		} else {
 			break; // If we don't accept this domain, bounce.
@@ -126,9 +128,9 @@ bool FileMappingClient::connect()
 				"The logical connection id is " << m_connection.GetLogConnID() <<
 				". This will be the streamid for this client");
 
-			m_connection.SetUrl(m_url.c_str());
+			m_connection.SetUrl(m_url);
 
-			Info(XrdClientDebug::kHIDEBUG, "Connect", "Working url is " << m_url);
+			Info(XrdClientDebug::kHIDEBUG, "Connect", "Working url is " << m_url.GetUrl());
 
 			// after connection deal with server
 			if (!m_connection.GetAccessToSrv()) {
@@ -202,12 +204,17 @@ FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts)
 	std::string response_string(resp);
 	free(resp);
 	if (!response_string.size()) {
-		return -1;
+		// No results!
+		return true;
 	} 
 
-	boost::tokenizer<> tok(response_string);
-	for(boost::tokenizer<>::const_iterator single_entry=tok.begin(); single_entry!=tok.end(); ++single_entry) {
+	typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+	boost::char_separator<char> sep(" ");
+	tokenizer tok(response_string, sep);
+    Info(XrdClientDebug::kHIDEBUG, "locate", "Locate response: " << response_string);
+	for(tokenizer::const_iterator single_entry=tok.begin(); single_entry!=tok.end(); ++single_entry) {
 
+		Info(XrdClientDebug::kHIDEBUG, "locate", "Parsing single entry: " << *single_entry);
 		// Current format (from http://xrootd.org/doc/prod/XRdv298.htm#_Toc235365554):
 		// xy[::aaa.bbb.ccc.ddd.eee]:ppppp
 		// x = node type
@@ -227,6 +234,7 @@ FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts)
 				break;
 
 			default: // Invalid response
+				Info(XrdClientDebug::kUSERDEBUG, "locate", "Invalid node type: " << (*single_entry)[0]);
 				continue;
 		}
 
@@ -236,11 +244,30 @@ FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts)
 		size_t ipv4_token = single_entry_copy.find("[::", 2);
 		if (ipv4_token != std::string::npos) { // IPv4
 			single_entry_copy.erase(0, ipv4_token+3);
-			single_entry_copy.erase(single_entry_copy.find("]"));
+			single_entry_copy.erase(single_entry_copy.find("]"), 1);
 		}
-		hosts.insert(single_entry_copy);
-	}
+		// The above will not be necessary when Host2Dest supports IPv6.
 
+		// This union trick is to make sure we get enough memory for the sockaddr and that
+		// things are exception-safe.
+		std::vector<char> sock_mem;
+		sock_mem.reserve(max(sizeof(struct sockaddr_in), sizeof(struct sockaddr_in6)));
+		typedef union {struct sockaddr* addr; char * memory;} sockaddr_big;
+		sockaddr_big addr;
+		addr.memory = &sock_mem[0];
+		if (!XrdSysDNS::Host2Dest(single_entry_copy.c_str(), *(addr.addr), 0))
+		{
+			Error("locate", "Invalid IP address: " << single_entry_copy);
+			continue;
+		}
+
+		char * hostname_result = XrdSysDNS::getHostName(*(addr.addr), NULL);
+		std::string hostname(hostname_result);
+		free(hostname_result);
+
+		hosts.insert(hostname);
+		Info(XrdClientDebug::kHIDEBUG, "locate", "Resulting host: " << *single_entry);
+	}
 	return true;
 }
 

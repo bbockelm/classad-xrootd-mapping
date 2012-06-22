@@ -3,3 +3,4 @@ CMakeFiles
 Makefile
 cmake_install.cmake
 src/*.so
+src/classad_xrootd_mapping_tester

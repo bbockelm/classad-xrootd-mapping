@@ -4,3 +4,6 @@ add_library(classad_xrootd_mapping MODULE xrootd_mapping.cpp xrootd_client.cpp)
 target_link_libraries(classad_xrootd_mapping XrdClient)
 target_link_libraries(classad_xrootd_mapping classad)
 
+add_executable(classad_xrootd_mapping_tester test_main.cpp)
+target_link_libraries(classad_xrootd_mapping_tester classad)
+
