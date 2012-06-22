@@ -1,0 +1,24 @@
+
+# Find the Condor classad library
+
+FIND_PATH(CLASSAD_INCLUDES classad/classad_distribution.hh
+  HINTS
+  ${CONDOR_DIR}
+  $ENV{CONDOR_DIR}
+  /usr
+  PATH_SUFFIXES include
+)
+
+FIND_LIBRARY(CLASSAD_LIB classad
+  HINTS
+  ${CONDOR_DIR}
+  $ENV{CONDOR_DIR}
+  /usr
+  PATH_SUFFIXES lib
+)
+
+GET_FILENAME_COMPONENT( CLASSAD_LIB_DIR ${CLASSAD_LIB} PATH )
+
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(ClassAd DEFAULT_MSG CLASSAD_LIB_DIR CLASSAD_INCLUDES)
+
