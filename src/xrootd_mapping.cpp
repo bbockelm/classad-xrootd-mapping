@@ -25,78 +25,13 @@
 #include "classad/classad_stl.h"
 #include "classad/fnCall.h"
 
-#include "XrdClient/XrdClientAdmin.hh"
+#include "xrootd_client.h"
 
 using namespace classad;
 
 static bool files_to_sites(const char *name, ArgumentList const &arguments,
     EvalState &state, Value  &result);
 
-class FileMappingClient;
-
-typedef classad_hash_map<std::string, FileMappingClient*, StringHash> InstanceTable;
-
-class Lock {
-
-public:
-    Lock(pthread_mutex_t & mutex) : m_mutex(mutex) {
-		pthread_mutex_lock(&mutex);
-    }
-
-    ~Lock() {
-        pthread_mutex_unlock(&m_mutex);
-    }
-
-private:
-    // no default constructor
-    Lock();
-
-    // non-copyable.
-    Lock(const Lock&);
-    Lock& operator=(const Lock&);
-
-    pthread_mutex_t & m_mutex;
-};
-
-/*
- *  Manage file mapping
- */
-class FileMappingClient {
-
-public:
-	static FileMappingClient &getClient(const std::string &hostname) {
-		FileMappingClient *client = NULL;
-		Lock lock(m_table_mutex);
-		InstanceTable::const_iterator result = m_instance_table.find(hostname);
-		if (result == m_instance_table.end()) {
-			FileMappingClient *new_client = new FileMappingClient(hostname);
-			m_instance_table[hostname] = new_client;
-			client = new_client;
-		} else {
-			client = result->second;
-		}
-		return *client;
-	}
-
-	bool map(const std::vector<std::string> &, std::vector<std::string> &) {
-		return false;
-	}
-
-private:
-	FileMappingClient(const std::string &hostname)
-		: m_client(("root://" + hostname).c_str())
-	{
-		m_client.Connect();
-	}
-
-	XrdClientAdmin m_client;
-
-	static InstanceTable m_instance_table;
-	static pthread_mutex_t m_table_mutex;
-};
-
-InstanceTable FileMappingClient::m_instance_table;
-pthread_mutex_t FileMappingClient::m_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /***************************************************************************
  *
@@ -117,6 +52,7 @@ static ClassAdFunctionMapping functions[] =
     { "",            NULL,                 0 }
 };
 
+
 /***************************************************************************
  * 
  * Required entry point for the library.  This should be the only symbol
@@ -131,6 +67,7 @@ extern "C"
 		return functions;
 	}
 }
+
 
 /****************************************************************************
  *
@@ -165,25 +102,6 @@ bool convert_to_vector_string(EvalState & state, Value & arg, std::vector<std::s
 
 }
 
-/****************************************************************************
- *
- * Logs in to Xrootd, using a cached handle if possible.
- *
- ****************************************************************************/
-bool login_to_xrootd(const std::string&, XrdClientAdmin*&)
-{
-	return false;
-}
-
-/****************************************************************************
- *
- * Maps a vector of filenames to a set of xrootd hosts.
- *
- ****************************************************************************/
-bool map_to_hosts(XrdClientAdmin&, const std::vector<std::string>)
-{
-	return false;
-}
 
 /****************************************************************************
  *
@@ -207,43 +125,43 @@ static bool files_to_sites(
 	EvalState          & state,
 	Value              &result)
 {
-	bool    eval_successful = true;
-
 	Value xrootd_host_arg, filenames_arg;
 	
 	// We check to make sure that we are passed exactly one argument,
 	// then we have to evaluate that argument.
 	if (arguments.size() != 2) {
 		result.SetErrorValue();
-		eval_successful = false;
+		return false;
 	}
 
 	std::string xrootd_host;
 	if (!arguments[0]->Evaluate(state, xrootd_host_arg) || (!xrootd_host_arg.IsStringValue(xrootd_host))) {
 		result.SetErrorValue();
-		eval_successful = false;
+		return false;
 	}
 
 	if (!arguments[1]->Evaluate(state, filenames_arg)) {
 		result.SetErrorValue();
-		eval_successful = false;
+		return false;
 	}
 	std::vector<std::string> filenames;
 	if (!convert_to_vector_string(state, filenames_arg, filenames)) {
 		result.SetErrorValue();
-		eval_successful = false;
+		return false;
 	}
 
-	XrdClientAdmin *client_ptr;
-	if (!login_to_xrootd(xrootd_host, client_ptr) || !client_ptr) {
+	FileMappingClient &client = FileMappingClient::getClient(xrootd_host);
+	if (!client.is_connect()) {
 		result.SetErrorValue();
-		eval_successful = false;
+		return false;
 	}
-	XrdClientAdmin &client = *client_ptr;
 
 	std::vector<std::string> hosts;
-	
-	map_to_hosts(client, hosts);
+	if (!client.map(filenames, hosts)) {
+		result.SetErrorValue();
+		return false;
+	}
 
-	return eval_successful;
+	return true;
 }
+
