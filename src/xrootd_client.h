@@ -8,6 +8,8 @@
 #include "XrdClient/XrdClientUnsolMsg.hh"
 #include "XrdClient/XrdClientConn.hh"
 
+namespace ClassadXrootdMapping {
+
 class FileMappingClient;
 
 typedef classad_unordered<std::string, FileMappingClient*> InstanceTable;
@@ -41,3 +43,4 @@ private:
 	static pthread_mutex_t m_table_mutex;
 };
 
+}

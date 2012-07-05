@@ -1,5 +1,7 @@
 
 #include "xrootd_client.h"
+#include "pthread_utils.h"
+#include "response_cache.h"
 
 #include <boost/tokenizer.hpp>
 
@@ -9,34 +11,10 @@
 #include "XrdSys/XrdSysDNS.hh"
 
 using namespace classad;
+using namespace ClassadXrootdMapping;
 
 InstanceTable FileMappingClient::m_instance_table;
 pthread_mutex_t FileMappingClient::m_table_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/*
- * Simple helper class for not deadlocking things.
- */
-class Lock {
-
-public:
-    Lock(pthread_mutex_t & mutex) : m_mutex(mutex) {
-		pthread_mutex_lock(&mutex);
-    }
-
-    ~Lock() {
-        pthread_mutex_unlock(&m_mutex);
-    }
-
-private:
-    // no default constructor
-    Lock();
-
-    // non-copyable.
-    Lock(const Lock&);
-    Lock& operator=(const Lock&);
-
-    pthread_mutex_t & m_mutex;
-};
 
 /*
  *  Manage file mapping
@@ -58,9 +36,15 @@ FileMappingClient & FileMappingClient::getClient(const std::string &hostname) {
 bool FileMappingClient::map(const std::vector<std::string> &filenames, std::vector<std::string> &hosts) {
 
 	std::set<std::string> hosts_set;
+
+	ResponseCache& cache = ResponseCache::getInstance();
+
 	for (std::vector<std::string>::const_iterator it = filenames.begin(); it != filenames.end(); ++it)
 	{
-		locate(*it, hosts_set);
+		std::set<std::string> temp_set;
+		locate(*it, temp_set);
+		cache.insert(*it, temp_set);
+		hosts_set.insert(temp_set.begin(), temp_set.end());
 	}
 
 	hosts.clear();

@@ -26,19 +26,14 @@
 #include "classad/fnCall.h"
 
 #include "xrootd_client.h"
+#include "response_cache.h"
 
 using namespace classad;
+using namespace ClassadXrootdMapping;
 
 static bool files_to_sites(const char *name, ArgumentList const &arguments,
     EvalState &state, Value  &result);
 
-
-/*
- * ClassAds leaks the ExprList object for functions returning lists.
- * Hence, we get to stand on our head to cache all the prior responses.
- * That way, it's memory hoarding, not memory leaks.
- */
-typedef classad_unordered<std::string, ExprList*> ResponseTable;
 static ResponseTable response_cache;
 
 /***************************************************************************
@@ -81,7 +76,7 @@ extern "C"
  * Evaluate in input argument down to a list
  *
  ****************************************************************************/
-bool convert_to_vector_string(EvalState & state, Value & arg, std::vector<std::string> &result) {
+static bool convert_to_vector_string(EvalState & state, Value & arg, std::vector<std::string> &result) {
 
 	ExprList *list_ptr = NULL;
 
@@ -109,7 +104,6 @@ bool convert_to_vector_string(EvalState & state, Value & arg, std::vector<std::s
 
 }
 
-
 /****************************************************************************
  *
  * Query an xrootd server and translate filenames to locations
@@ -133,7 +127,7 @@ static bool files_to_sites(
 	Value              &result)
 {
 	Value xrootd_host_arg, filenames_arg;
-	
+
 	// We check to make sure that we are passed exactly one argument,
 	// then we have to evaluate that argument.
 	if (arguments.size() != 2) {
@@ -149,6 +143,7 @@ static bool files_to_sites(
 		return false;
 	}
 
+	
 	if (!arguments[1]->Evaluate(state, filenames_arg)) {
 		result.SetErrorValue();
 		CondorErrMsg = "Could not evaluate the second argument (list of filenames) of files_to_sites.";
@@ -167,46 +162,34 @@ static bool files_to_sites(
 		return false;
 	}
 
-	FileMappingClient &client = FileMappingClient::getClient(xrootd_host);
-	if (!client.is_connected()) {
-		result.SetErrorValue();
-		CondorErrMsg = "Could not connect to specified xrootd host: " + xrootd_host;
-		return false;
-	}
+	std::vector<std::string> files_to_query;
+	ResponseCache &cache = ResponseCache::getInstance();
+	classad_shared_ptr<ExprList> result_list = cache.query(filenames, files_to_query);
 
-	std::vector<std::string> hosts;
-	if (!client.map(filenames, hosts)) {
-		result.SetErrorValue();
-		CondorErrMsg = "Error while mapping the files to hosts.";
-		return false;
-	}
-
-	ExprList * result_list = new ExprList();
-	std::stringstream ss;
-	sort(hosts.begin(), hosts.end());
-	for (std::vector<std::string>::const_iterator it=hosts.begin(); it!=hosts.end(); ++it) {
-		Value v;
-		v.SetStringValue(*it);
-		result_list->push_back(Literal::MakeLiteral(v));
-		ss << *it << ",";
-	}
-
-	std::string response_hash = ss.str();
-	ResponseTable::iterator cache_contents = response_cache.find(response_hash);
-    if (cache_contents != response_cache.end()) {
-		result.SetListValue(cache_contents->second);
-	}
-	else
+	if (files_to_query.size() > 0)
 	{
-		ExprList * result_list = new ExprList();
-		for (std::vector<std::string>::const_iterator it=hosts.begin(); it!=hosts.end(); ++it) {
-			Value v;
-			v.SetStringValue(*it);
-			result_list->push_back(Literal::MakeLiteral(v));
+		FileMappingClient &client = FileMappingClient::getClient(xrootd_host);
+		if (!client.is_connected()) {
+			result.SetErrorValue();
+			CondorErrMsg = "Could not connect to specified xrootd host: " + xrootd_host;
+			return false;
 		}
-		result.SetListValue(result_list);
-		response_cache[response_hash] = NULL;
+
+		std::vector<std::string> hosts;
+		if (!client.map(filenames, hosts)) {
+			result.SetErrorValue();
+			CondorErrMsg = "Error while mapping the files to hosts.";
+			return false;
+		}
+
+		if (hosts.size() > 0)
+		{
+			classad_shared_ptr<ExprList> new_list = cache.addToList(result_list, hosts);
+			result_list = new_list;
+		}
 	}
+
+	result.SetListValue(result_list.get());
 
 	return true;
 }
