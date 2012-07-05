@@ -1,0 +1,3 @@
+[
+  sites = files_to_sites("xrootd-itb.unl.edu:1094", {"/store/foo", "/store/bar"});
+]

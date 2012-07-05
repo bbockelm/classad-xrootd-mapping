@@ -17,9 +17,9 @@
  *
  ***************************************************************/
 
-#include <pthread.h>
 #include <vector>
 #include <string>
+#include <sstream>
 
 #include "classad/classad_distribution.h"
 #include "classad/classad_stl.h"
@@ -32,6 +32,14 @@ using namespace classad;
 static bool files_to_sites(const char *name, ArgumentList const &arguments,
     EvalState &state, Value  &result);
 
+
+/*
+ * ClassAds leaks the ExprList object for functions returning lists.
+ * Hence, we get to stand on our head to cache all the prior responses.
+ * That way, it's memory hoarding, not memory leaks.
+ */
+typedef classad_hash_map<std::string, ExprList*, StringHash> ResponseTable;
+static ResponseTable response_cache;
 
 /***************************************************************************
  *
@@ -174,12 +182,31 @@ static bool files_to_sites(
 	}
 
 	ExprList * result_list = new ExprList();
+	std::stringstream ss;
+	sort(hosts.begin(), hosts.end());
 	for (std::vector<std::string>::const_iterator it=hosts.begin(); it!=hosts.end(); ++it) {
 		Value v;
 		v.SetStringValue(*it);
 		result_list->push_back(Literal::MakeLiteral(v));
+		ss << *it << ",";
 	}
-	result.SetListValue(result_list);
+
+	std::string response_hash = ss.str();
+	ResponseTable::iterator cache_contents = response_cache.find(response_hash);
+    if (cache_contents != response_cache.end()) {
+		result.SetListValue(cache_contents->second);
+	}
+	else
+	{
+		ExprList * result_list = new ExprList();
+		for (std::vector<std::string>::const_iterator it=hosts.begin(); it!=hosts.end(); ++it) {
+			Value v;
+			v.SetStringValue(*it);
+			result_list->push_back(Literal::MakeLiteral(v));
+		}
+		result.SetListValue(result_list);
+		response_cache[response_hash] = NULL;
+	}
 
 	return true;
 }

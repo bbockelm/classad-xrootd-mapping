@@ -24,13 +24,14 @@ public:
 
 	bool is_connected() {return m_connection.IsConnected();}
 
-	UnsolRespProcResult ProcessUnsolicitedMsg(XrdClientUnsolMsgSender * /*sender*/, XrdClientMessage * /*unsolmsg*/) {return kUNSOL_CONTINUE;};
+	UnsolRespProcResult ProcessUnsolicitedMsg(XrdClientUnsolMsgSender * /*sender*/, XrdClientMessage * /*unsolmsg*/);
 
 private:
 	FileMappingClient(const std::string &hostname);
 
 	bool connect();
 	bool locate(const std::string &, std::set<std::string> &);
+	bool locate_request(ClientRequest&);
 
 	XrdClientConn m_connection;
 	XrdClientUrlInfo m_url;

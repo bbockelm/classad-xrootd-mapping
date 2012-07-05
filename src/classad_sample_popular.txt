@@ -1,0 +1,3 @@
+[
+  sites = files_to_sites("xrootd-itb.unl.edu:1094", "/store/mc/JobRobot/RelValProdTTbar/GEN-SIM-DIGI-RECO/MC_3XY_V24_JobRobot-v1/0001/56E18353-982C-DF11-B217-00304879FA4A.root");
+]

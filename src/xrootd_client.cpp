@@ -3,6 +3,7 @@
 
 #include <boost/tokenizer.hpp>
 
+#include "XrdClient/XrdClientConn.hh"
 #include "XrdClient/XrdClientEnv.hh"
 #include "XrdClient/XrdClientDebug.hh"
 #include "XrdSys/XrdSysDNS.hh"
@@ -180,7 +181,22 @@ bool FileMappingClient::connect()
 		return false;
 	}
 
+	m_connection.SetOpTimeLimit(1);
+	m_connection.SetMaxRedirCnt(1);
+
 	return true;
+}
+
+/*
+ * Note - not quite non-blocking.
+ */
+bool
+FileMappingClient::locate_request(ClientRequest & locateRequest)
+{
+
+	// TODO: return immediately if paused.
+	return m_connection.WriteToServer_Async(&locateRequest, NULL) == kOK;
+	
 }
 
 bool
@@ -207,6 +223,7 @@ FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts)
 		// No results!
 		return true;
 	} 
+	//locate_request(locateRequest);
 
 	typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
 	boost::char_separator<char> sep(" ");
@@ -269,5 +286,56 @@ FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts)
 		Info(XrdClientDebug::kHIDEBUG, "locate", "Resulting host: " << *single_entry);
 	}
 	return true;
+}
+
+UnsolRespProcResult
+FileMappingClient::ProcessUnsolicitedMsg(XrdClientUnsolMsgSender * /*sender*/, XrdClientMessage * unsolmsg)
+{
+
+	if (unsolmsg->IsAttn())
+	{
+		struct ServerResponseBody_Attn *attnbody;
+		attnbody = (struct ServerResponseBody_Attn *)unsolmsg->GetData();
+		int actnum = (attnbody) ? (attnbody->actnum) : 0;
+
+		switch (actnum) {
+
+			case kXR_asyncdi: // disconnect + delay reconnect
+			case kXR_asyncrd: // redirect
+				// We ignore these for now, as they break our model.
+				return kUNSOL_CONTINUE;
+				break;
+
+			case kXR_asyncwt: // Put the client in wait.
+				// Not so useful for us, as we'll ignore it to avoid blocking the thread.
+				// TODO: record this internally instead and respect it.
+				struct ServerResponseBody_Attn_asyncwt *wait;
+				wait = (struct ServerResponseBody_Attn_asyncwt *)unsolmsg->GetData();
+				if (wait)
+				{
+					m_connection.SetREQPauseState(ntohl(wait->wsec));
+				}
+				break;
+
+			case kXR_asyncgo: // 
+				m_connection.SetREQPauseState(0);
+				return kUNSOL_CONTINUE;
+				break;
+
+			case kXR_asynresp: // An actual response.
+				return kUNSOL_CONTINUE;
+				break;
+
+			default:
+				break;
+		}
+
+	} // Pass communication errors to the underlying library.
+	else if (unsolmsg->GetStatusCode() != XrdClientMessage::kXrdMSC_ok)
+	{
+		return m_connection.ProcessAsynResp(unsolmsg);
+	}
+
+	return kUNSOL_CONTINUE;
 }
 

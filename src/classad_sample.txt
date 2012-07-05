@@ -1,4 +1,4 @@
 [
-  /*sites = files_to_sites("xrootd-itb.unl.edu:1094", "/store/relval/CMSSW_5_2_0_pre5/Electron/RECO/GR_R_52_V2_RelVal_electron2010B-v1/0000/0E0B8A4D-7A57-E111-B73A-00261894395F.root");*/
-  sites = files_to_sites("xrootd-itb.unl.edu:1094", "/store/mc/JobRobot/RelValProdTTbar/GEN-SIM-DIGI-RECO/MC_3XY_V24_JobRobot-v1/0001/56E18353-982C-DF11-B217-00304879FA4A.root");
+  sites = files_to_sites("xrootd-itb.unl.edu:1094", "/store/relval/CMSSW_5_2_0_pre5/Electron/RECO/GR_R_52_V2_RelVal_electron2010B-v1/0000/0E0B8A4D-7A57-E111-B73A-00261894395F.root");
+  /*sites = files_to_sites("xrootd-itb.unl.edu:1094", "/store/mc/JobRobot/RelValProdTTbar/GEN-SIM-DIGI-RECO/MC_3XY_V24_JobRobot-v1/0001/56E18353-982C-DF11-B217-00304879FA4A.root");*/
 ]
