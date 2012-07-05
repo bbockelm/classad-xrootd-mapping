@@ -60,7 +60,6 @@ public:
 
 	void insert(const std::string &filename, const std::set<std::string> & hosts);
 	classad_shared_ptr<classad::ExprList> getList(const std::set<std::string> &hosts);
-	classad_shared_ptr<classad::ExprList> addToList(const classad_shared_ptr<classad::ExprList> orig_list, const std::vector<std::string> &hosts);
 	classad_shared_ptr<classad::ExprList> addToList(const classad_shared_ptr<classad::ExprList> orig_list, const std::set<std::string> &hosts);
 
 	static ResponseCache &getInstance();
@@ -79,6 +78,8 @@ private:
 
 	static ResponseCache * m_instance;
 	static pthread_mutex_t m_instance_mutex;
+
+	pthread_mutex_t m_table_mutex;
 };
 
 }

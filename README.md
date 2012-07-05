@@ -34,5 +34,7 @@ Value of 'sites' attribute:
    }
 ```
 
+To see how the library is interacting with Xrootd, set the environment variable XRD_DEBUGLEVEL=2.
+
 More thorough usage requires integration with Condor.
 

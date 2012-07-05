@@ -22,7 +22,7 @@ class FileMappingClient : public XrdClientAbsUnsolMsgHandler {
 public:
 	static FileMappingClient &getClient(const std::string &hostname);
 
-	bool map(const std::vector<std::string> &, std::vector<std::string> &);
+	bool map(const std::vector<std::string> & filenames, std::set<std::string> & output_hosts);
 
 	bool is_connected() {return m_connection.IsConnected();}
 

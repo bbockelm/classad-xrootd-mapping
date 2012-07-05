@@ -33,9 +33,7 @@ FileMappingClient & FileMappingClient::getClient(const std::string &hostname) {
 	return *client;
 }
 
-bool FileMappingClient::map(const std::vector<std::string> &filenames, std::vector<std::string> &hosts) {
-
-	std::set<std::string> hosts_set;
+bool FileMappingClient::map(const std::vector<std::string> &filenames, std::set<std::string> &hosts) {
 
 	ResponseCache& cache = ResponseCache::getInstance();
 
@@ -44,15 +42,9 @@ bool FileMappingClient::map(const std::vector<std::string> &filenames, std::vect
 		std::set<std::string> temp_set;
 		locate(*it, temp_set);
 		cache.insert(*it, temp_set);
-		hosts_set.insert(temp_set.begin(), temp_set.end());
+		hosts.insert(temp_set.begin(), temp_set.end());
 	}
 
-	hosts.clear();
-	hosts.reserve(hosts_set.size());
-	for (std::set<std::string>::const_iterator it = hosts_set.begin(); it != hosts_set.end(); ++it)
-	{
-		hosts.push_back(*it);
-	}
 	return true;
 }
 
@@ -165,7 +157,6 @@ bool FileMappingClient::connect()
 		return false;
 	}
 
-	m_connection.SetOpTimeLimit(1);
 	m_connection.SetMaxRedirCnt(1);
 
 	return true;
@@ -185,6 +176,9 @@ FileMappingClient::locate_request(ClientRequest & locateRequest)
 
 bool
 FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts) {
+
+	// Set the max transaction duration
+	m_connection.SetOpTimeLimit(EnvGetLong(NAME_TRANSACTIONTIMEOUT));
 
 	ClientRequest locateRequest;
 	memset(&locateRequest, 0, sizeof(locateRequest));
@@ -212,7 +206,7 @@ FileMappingClient::locate(const std::string &path, std::set<std::string> &hosts)
 	typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
 	boost::char_separator<char> sep(" ");
 	tokenizer tok(response_string, sep);
-    Info(XrdClientDebug::kHIDEBUG, "locate", "Locate response: " << response_string);
+	Info(XrdClientDebug::kHIDEBUG, "locate", "Locate response: " << response_string);
 	for(tokenizer::const_iterator single_entry=tok.begin(); single_entry!=tok.end(); ++single_entry) {
 
 		Info(XrdClientDebug::kHIDEBUG, "locate", "Parsing single entry: " << *single_entry);

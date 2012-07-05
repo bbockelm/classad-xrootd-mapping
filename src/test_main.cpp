@@ -83,5 +83,21 @@ int main(int argc, char* argv[]) {
 		std::cout << "Value of 'sites' attribute: " << unparsed << std::endl;
 	}
 
+	if (!classad.EvaluateAttr("sites", val) || val.IsErrorValue())
+	{
+		std::cout<< "Unable to evaluate the 'sites' attribute a second time!" << std::endl;
+		if (CondorErrMsg.size())
+		{
+			std::cout << "Error message: " << CondorErrMsg << std::endl;
+		}
+		return 1;
+	}
+	else
+	{
+		std::string unparsed;
+		pp.Unparse(unparsed, val);
+		std::cout << "Value of re-evaluated 'sites' attribute: " << unparsed << std::endl;
+	}
+
 	return 0;
 }

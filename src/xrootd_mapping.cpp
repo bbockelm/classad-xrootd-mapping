@@ -175,7 +175,7 @@ static bool files_to_sites(
 			return false;
 		}
 
-		std::vector<std::string> hosts;
+		std::set<std::string> hosts;
 		if (!client.map(filenames, hosts)) {
 			result.SetErrorValue();
 			CondorErrMsg = "Error while mapping the files to hosts.";
