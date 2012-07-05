@@ -38,7 +38,7 @@ static bool files_to_sites(const char *name, ArgumentList const &arguments,
  * Hence, we get to stand on our head to cache all the prior responses.
  * That way, it's memory hoarding, not memory leaks.
  */
-typedef classad_hash_map<std::string, ExprList*, StringHash> ResponseTable;
+typedef classad_unordered<std::string, ExprList*> ResponseTable;
 static ResponseTable response_cache;
 
 /***************************************************************************

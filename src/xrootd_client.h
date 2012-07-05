@@ -10,7 +10,7 @@
 
 class FileMappingClient;
 
-typedef classad_hash_map<std::string, FileMappingClient*, classad::StringHash> InstanceTable;
+typedef classad_unordered<std::string, FileMappingClient*> InstanceTable;
 
 /*
  *  Manage file mapping

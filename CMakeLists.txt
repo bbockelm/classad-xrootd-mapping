@@ -6,6 +6,8 @@ set( CMAKE_MODULE_PATH
  ${PROJECT_SOURCE_DIR}/cmake )
 
 find_package( Xrootd REQUIRED )
+find_package( Classad REQUIRED )
+find_package( Boost REQUIRED )
 
 if( CMAKE_COMPILER_IS_GNUCXX )
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror" )
