@@ -1,7 +1,7 @@
 
 # Find the xrootd client includes and libraries
 
-FIND_PATH(XROOTD_INCLUDES XrdClient/XrdClientAdmin.hh
+FIND_PATH(XROOTD_INCLUDES XrdCl/XrdClFileSystem.hh
   HINTS
   ${XROOTD_DIR}
   $ENV{XROOTD_DIR}
@@ -9,7 +9,7 @@ FIND_PATH(XROOTD_INCLUDES XrdClient/XrdClientAdmin.hh
   PATH_SUFFIXES include /xrootd
 )
 
-FIND_LIBRARY(XROOTD_CLIENT XrdClient
+FIND_LIBRARY(XROOTD_CLIENT XrdCl
   HINTS
   ${XROOTD_DIR}
   $ENV{XROOTD_DIR}

@@ -10,7 +10,9 @@ find_package( Classad REQUIRED )
 find_package( Boost REQUIRED )
 
 if( CMAKE_COMPILER_IS_GNUCXX )
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror" )
+  # XRootD headers contain compilation warnings.
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror" )
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror" )
 endif()
 
 if( CMAKE_COMPILER_IS_GNUCC )

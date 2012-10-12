@@ -169,11 +169,6 @@ static bool files_to_sites(
 	if (files_to_query.size() > 0)
 	{
 		FileMappingClient &client = FileMappingClient::getClient(xrootd_host);
-		if (!client.is_connected()) {
-			result.SetErrorValue();
-			CondorErrMsg = "Could not connect to specified xrootd host: " + xrootd_host;
-			return false;
-		}
 
 		std::set<std::string> hosts;
 		if (!client.map(filenames, hosts)) {
@@ -184,8 +179,7 @@ static bool files_to_sites(
 
 		if (hosts.size() > 0)
 		{
-			classad_shared_ptr<ExprList> new_list = cache.addToList(result_list, hosts);
-			result_list = new_list;
+			ResponseCache::addToList(hosts, result_list);
 		}
 	}
 
